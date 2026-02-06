@@ -74,15 +74,42 @@ if brain_available:
     ]], columns=['latitude', 'longitude', 'hour'])
 
     # ASK THE ROBOT
-    prediction = model.predict(input_data)
+    predicted_count = int(prediction[0])
 
-    # Show the result
-    st.success(f"🔮 At {input_hour}:00, I predict **{int(prediction[0])}** bikes at **{selected_station_name}**.")
+    # --- NEW: DYNAMIC PRICING LOGIC ---
+    # This turns your AI project into a "Business" project
 
-    # Show a mini chart of that station's history
-    st.write(f"📉 History for {selected_station_name}:")
-    history_data = df[df['station_name'] == selected_station_name]
-    st.line_chart(history_data.set_index('timestamp')['free_bikes'])
+    base_price = 3.00  # 3 Euros per hour normally
 
-else:
-    st.error("❌ I can't find the brain (bike_predictor.pkl). Run train_model.py!")
+    if predicted_count < 3:
+        # SCARCITY! Very few bikes. Raise price to limit demand.
+        price_factor = 1.5  # +50%
+        condition = "🔥 High Demand (Surge Pricing)"
+        color = "red"
+    elif predicted_count > 15:
+        # OVERSUPPLY! Too many bikes. Lower price to clear stock.
+        price_factor = 0.8  # -20%
+        condition = "💰 Oversupply (Discount)"
+        color = "green"
+    else:
+        # NORMAL
+        price_factor = 1.0
+        condition = "⚖️ Normal Demand"
+        color = "blue"
+
+    final_price = round(base_price * price_factor, 2)
+
+    # Show the prediction AND the Price
+    st.divider()
+    st.subheader(f"Strategy: {condition}")
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Predicted Bikes", predicted_count)
+    c2.metric("Suggested Hourly Price", f"€{final_price}")
+    c3.metric("Price Adjustment", f"{int((price_factor - 1) * 100)}%")
+
+    if price_factor > 1:
+        st.warning(
+            f"⚠️ Recommendation: Move bikes to {selected_station_name} before {input_hour}:00 to capture high revenue!")
+    elif price_factor < 1:
+        st.success(f"✅ Recommendation: Run a marketing campaign to encourage rides from {selected_station_name}.")
