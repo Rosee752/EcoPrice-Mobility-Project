@@ -22,10 +22,7 @@ try:
     # Get the very latest time found in the file
     latest_timestamp_in_file = df['timestamp'].max()
 
-    # --- THE FIX IS HERE ---
-    # Instead of looking for the EXACT millisecond, we look for data
-    # from the last 30 minutes.
-    # This captures all stations, even if they reported a few seconds apart.
+    # Filter: Keep rows that are within 30 minutes of the latest time
     current_data = df[df['timestamp'] > (latest_timestamp_in_file - pd.Timedelta(minutes=30))]
 
     st.write(f"Data snapshot from: {latest_timestamp_in_file}")
@@ -52,8 +49,7 @@ if brain_available:
     col1, col2 = st.columns(2)
 
     with col1:
-        # 1. Let the user Pick a Station (The Fix!)
-        # We get a list of all unique station names
+        # 1. Let the user Pick a Station
         all_stations = df['station_name'].unique()
         selected_station_name = st.selectbox("Select a Station", all_stations)
 
@@ -61,12 +57,11 @@ if brain_available:
         # 2. Let the user Pick an Hour
         input_hour = st.slider("Select Hour (0-23)", 0, 23, 12)
 
-    # Get the specific latitude/longitude/empty_slots for the selected station
-    # We take the most recent data for that station to be accurate
+    # Get the specific latitude/longitude for the selected station
     station_data = df[df['station_name'] == selected_station_name].tail(1).iloc[0]
 
     # Prepare the input for the AI
-    # It needs: [latitude, longitude, empty_slots, hour]
+    # It needs: [latitude, longitude, hour]
     input_data = pd.DataFrame([[
         station_data['latitude'],
         station_data['longitude'],
@@ -74,28 +69,24 @@ if brain_available:
     ]], columns=['latitude', 'longitude', 'hour'])
 
     # ASK THE ROBOT
+    prediction = model.predict(input_data)
     predicted_count = int(prediction[0])
 
-    # --- NEW: DYNAMIC PRICING LOGIC ---
-    # This turns your AI project into a "Business" project
-
+    # --- DYNAMIC PRICING LOGIC ---
     base_price = 3.00  # 3 Euros per hour normally
 
     if predicted_count < 3:
-        # SCARCITY! Very few bikes. Raise price to limit demand.
+        # SCARCITY! Very few bikes. Raise price.
         price_factor = 1.5  # +50%
         condition = "🔥 High Demand (Surge Pricing)"
-        color = "red"
     elif predicted_count > 15:
-        # OVERSUPPLY! Too many bikes. Lower price to clear stock.
+        # OVERSUPPLY! Too many bikes. Lower price.
         price_factor = 0.8  # -20%
         condition = "💰 Oversupply (Discount)"
-        color = "green"
     else:
         # NORMAL
         price_factor = 1.0
         condition = "⚖️ Normal Demand"
-        color = "blue"
 
     final_price = round(base_price * price_factor, 2)
 
@@ -109,7 +100,9 @@ if brain_available:
     c3.metric("Price Adjustment", f"{int((price_factor - 1) * 100)}%")
 
     if price_factor > 1:
-        st.warning(
-            f"⚠️ Recommendation: Move bikes to {selected_station_name} before {input_hour}:00 to capture high revenue!")
+        st.warning(f"⚠️ Recommendation: Move bikes to {selected_station_name} before {input_hour}:00 to capture high revenue!")
     elif price_factor < 1:
         st.success(f"✅ Recommendation: Run a marketing campaign to encourage rides from {selected_station_name}.")
+
+else:
+    st.error("❌ I can't find the brain (bike_predictor.pkl). Run train_model.py!")
