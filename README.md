@@ -5,7 +5,7 @@ A full-stack data engineering and machine learning project that optimizes micro-
 
 This project solves the "Cold Start" problem by implementing a custom scheduler to build a historical dataset, allowing the ML model to learn distinct day/night demand cycles.
 
-**Live Demo:** [Link to your Streamlit Cloud app if you deploy it]
+**Live Demo:** [Click here to view the Dashboard](https://ecoprice-mobility-project-xpohpbxbnk7qvvke3d25dz.streamlit.app/)
 
 ---
 
